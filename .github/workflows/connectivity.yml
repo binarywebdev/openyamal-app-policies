@@ -1,0 +1,30 @@
+name: Check public OpenYamal connectivity
+on:
+  workflow_dispatch:
+permissions: {}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check site and application API without credentials
+        run: |
+          python - <<'PY'
+          import urllib.request, urllib.error, json
+          api_ok = False
+          for name, url in [('site', 'https://openyamal.ru/'), ('api', 'https://api.openyamal.ru/api/health')]:
+              try:
+                  with urllib.request.urlopen(url, timeout=25) as response:
+                      code = response.status
+                      print(name, 'HTTP', code)
+                      if name == 'api':
+                          data = json.loads(response.read(256))
+                          api_ok = code == 200 and data.get('status') == 'ok'
+                          print('api_health_ok', api_ok)
+              except urllib.error.HTTPError as error:
+                  print(name, 'HTTP', error.code)
+              except Exception as error:
+                  print(name, type(error).__name__)
+          if not api_ok:
+              raise SystemExit('API health could not be confirmed from cloud runner')
+          PY
